@@ -13,24 +13,31 @@ export default function Certificate({
   return (
     <div id="certificate-print-area" className="scale-in">
       <div className="certificate-canvas-img">
+        {/* Real image tag for background template (solves html2canvas background rendering issues) */}
+        <img 
+          src="/certificate-template.jpg" 
+          alt="Certificate Background" 
+          className="cert-template-bg-img"
+        />
+
         {/* Student Name Overlay */}
         <div className="cert-overlay-student-name">
           {studentName}
         </div>
 
-        {/* Completion Date Overlay (Elegant placement in the blank space) */}
+        {/* Completion Date Overlay */}
         <div className="cert-overlay-date">
           Date of Issuance: {completionDate}
         </div>
 
-        {/* Certificate ID Cover & Replace (Covers the AAA-AI-2024-000123 text on the template) */}
+        {/* Certificate ID Cover & Replace */}
         <div className="cert-overlay-id-cover">
           <div className="cert-overlay-id-text">
             {certificateNumber}
           </div>
         </div>
 
-        {/* Dynamic QR Code overlay (Placed elegantly on the right side under the gold medal) */}
+        {/* Dynamic QR Code overlay */}
         <div className="cert-overlay-qrcode-container">
           <QRCodeSVG 
             value={verificationUrl} 

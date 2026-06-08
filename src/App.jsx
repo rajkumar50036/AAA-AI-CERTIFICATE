@@ -186,14 +186,15 @@ export default function App() {
 
       document.body.appendChild(clone);
 
-      // Wait a tiny bit for the clone to be layout-rendered by the browser
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for the clone to be layout-rendered and images loaded by the browser
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Capture the unscaled offscreen clone at 4x scale for maximum DPI print quality
       const canvas = await html2canvas(clone, {
         scale: 4, // 4x scale makes it super high-res (4000x2668px)
         useCORS: true,
         logging: false,
+        imageTimeout: 0, // Wait indefinitely for all images to resolve and decode
         backgroundColor: null // Transparent background
       });
 
