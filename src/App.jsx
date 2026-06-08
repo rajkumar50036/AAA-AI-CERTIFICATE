@@ -156,21 +156,49 @@ export default function App() {
 
 
 
-  // Generate High-DPI Landscape A4 PDF
+  // Generate High-DPI Landscape A4 PDF without screen-scale blurriness
   const handleDownloadPDF = async () => {
     const element = document.getElementById('certificate-print-area');
     if (!element) return;
 
     try {
       logEvent('Download PDF', verifiedRecord.studentName, verifiedRecord.id, 'Success');
+      setIsLoading(true);
+
+      // Create an exact clone of the certificate element
+      const clone = element.cloneNode(true);
       
-      // Render elements at scale to avoid blurry text on PDF prints
-      const canvas = await html2canvas(element, {
-        scale: 2.5,
+      // Style the clone to be visible to html2canvas but positioned completely offscreen
+      // Reset any scale transform so it renders at full 1000x667px size
+      clone.style.position = 'fixed';
+      clone.style.left = '-9999px';
+      clone.style.top = '0';
+      clone.style.transform = 'none';
+      clone.style.width = '1000px';
+      clone.style.height = '667px';
+      
+      // Ensure the inner canvas element inside the clone also has transform reset
+      const innerCanvas = clone.querySelector('.certificate-canvas-img');
+      if (innerCanvas) {
+        innerCanvas.style.transform = 'none';
+        innerCanvas.style.margin = '0';
+      }
+
+      document.body.appendChild(clone);
+
+      // Wait a tiny bit for the clone to be layout-rendered by the browser
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture the unscaled offscreen clone at 4x scale for maximum DPI print quality
+      const canvas = await html2canvas(clone, {
+        scale: 4, // 4x scale makes it super high-res (4000x2668px)
         useCORS: true,
         logging: false,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: null // Transparent background
       });
+
+      // Remove the clone from DOM immediately
+      document.body.removeChild(clone);
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
@@ -179,11 +207,16 @@ export default function App() {
         format: 'a4'
       });
 
-      // A4 dimensions: 297mm width by 210mm height
-      pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+      // Center the certificate on A4 landscape (297mm x 210mm) keeping the exact aspect ratio
+      // Width = 297mm, Height = 297 * (667/1000) = 198.1mm
+      // Y-offset offset: (210 - 198.1) / 2 = 5.95mm
+      pdf.addImage(imgData, 'PNG', 0, 5.95, 297, 198.1);
       pdf.save(`aadhya_certificate_${verifiedRecord.id}.pdf`);
+      
+      setIsLoading(false);
     } catch (err) {
       console.error('Error compiling PDF:', err);
+      setIsLoading(false);
     }
   };
 
