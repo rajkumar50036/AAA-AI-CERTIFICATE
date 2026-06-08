@@ -156,50 +156,39 @@ export default function App() {
 
 
 
-  // Generate High-DPI Landscape A4 PDF without screen-scale blurriness
+  // Generate High-DPI Landscape A4 PDF from the active onscreen element
   const handleDownloadPDF = async () => {
-    const element = document.getElementById('certificate-print-area');
-    if (!element) return;
+    const canvasImg = document.querySelector('.certificate-canvas-img');
+    if (!canvasImg) return;
 
     try {
       logEvent('Download PDF', verifiedRecord.studentName, verifiedRecord.id, 'Success');
       setIsLoading(true);
 
-      // Create an exact clone of the certificate element
-      const clone = element.cloneNode(true);
-      
-      // Style the clone to be visible to html2canvas but positioned completely offscreen
-      // Reset any scale transform so it renders at full 1000x667px size
-      clone.style.position = 'fixed';
-      clone.style.left = '-9999px';
-      clone.style.top = '0';
-      clone.style.transform = 'none';
-      clone.style.width = '1000px';
-      clone.style.height = '667px';
-      
-      // Ensure the inner canvas element inside the clone also has transform reset
-      const innerCanvas = clone.querySelector('.certificate-canvas-img');
-      if (innerCanvas) {
-        innerCanvas.style.transform = 'none';
-        innerCanvas.style.margin = '0';
-      }
+      // Save original styles
+      const originalTransform = canvasImg.style.transform;
+      const originalMargin = canvasImg.style.margin;
 
-      document.body.appendChild(clone);
+      // Temporarily override styles to force 100% scale and remove offsets
+      // This forces the onscreen element to layout at full 1000x667px during capture
+      canvasImg.style.transform = 'none';
+      canvasImg.style.margin = '0';
 
-      // Wait for the clone to be layout-rendered and images loaded by the browser
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a frame for browser style recalculation and decode paint
+      await new Promise(resolve => requestAnimationFrame(resolve));
 
-      // Capture the unscaled offscreen clone at 4x scale for maximum DPI print quality
-      const canvas = await html2canvas(clone, {
-        scale: 4, // 4x scale makes it super high-res (4000x2668px)
+      // Capture the onscreen element at 4x scale (the browser has already loaded/rendered this at full quality)
+      const canvas = await html2canvas(canvasImg, {
+        scale: 4, // 4x scale for high-DPI print quality (4000x2668px)
         useCORS: true,
         logging: false,
-        imageTimeout: 0, // Wait indefinitely for all images to resolve and decode
-        backgroundColor: null // Transparent background
+        imageTimeout: 0,
+        backgroundColor: null
       });
 
-      // Remove the clone from DOM immediately
-      document.body.removeChild(clone);
+      // Restore original inline styles immediately
+      canvasImg.style.transform = originalTransform;
+      canvasImg.style.margin = originalMargin;
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
@@ -210,7 +199,7 @@ export default function App() {
 
       // Center the certificate on A4 landscape (297mm x 210mm) keeping the exact aspect ratio
       // Width = 297mm, Height = 297 * (667/1000) = 198.1mm
-      // Y-offset offset: (210 - 198.1) / 2 = 5.95mm
+      // Y-offset: (210 - 198.1) / 2 = 5.95mm
       pdf.addImage(imgData, 'PNG', 0, 5.95, 297, 198.1);
       pdf.save(`aadhya_certificate_${verifiedRecord.id}.pdf`);
       
